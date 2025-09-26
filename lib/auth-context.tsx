@@ -115,7 +115,6 @@
 //   return context
 // }
 
-
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
@@ -126,7 +125,7 @@ interface User {
   id: string
   email: string
   name: string
-  token?: string // Adicionado token opcional
+  token?: string
 }
 
 interface AuthContextType {
@@ -146,101 +145,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false)
   const router = useRouter()
 
+  // Hidratação: só roda no cliente
   useEffect(() => {
-    console.log("[v0] AuthProvider: Iniciando hidratação")
     const initializeAuth = async () => {
       if (typeof window !== "undefined") {
-        console.log("[v0] AuthProvider: Verificando localStorage")
         const savedUser = localStorage.getItem("user")
         const savedToken = localStorage.getItem("token")
 
         if (savedUser && savedToken) {
           try {
             const userData = JSON.parse(savedUser)
-            console.log("[v0] AuthProvider: Usuário encontrado no localStorage:", userData)
-
-            const isTokenValid = await validateToken(savedToken)
-            if (isTokenValid) {
-              setUser({ ...userData, token: savedToken })
-              document.cookie = `user=${JSON.stringify(userData)}; path=/; max-age=86400`
-            } else {
-              // Token inválido, limpar dados
-              localStorage.removeItem("user")
-              localStorage.removeItem("token")
-              console.log("[v0] AuthProvider: Token inválido, dados removidos")
-            }
-          } catch (error) {
-            console.error("[v0] AuthProvider: Erro ao carregar usuário salvo:", error)
+            setUser({ ...userData, token: savedToken })
+          } catch {
             localStorage.removeItem("user")
             localStorage.removeItem("token")
           }
-        } else {
-          console.log("[v0] AuthProvider: Nenhum usuário no localStorage")
         }
       }
-      console.log("[v0] AuthProvider: Hidratação concluída")
       setLoading(false)
       setIsHydrated(true)
     }
 
-    const timer = setTimeout(initializeAuth, 0)
-    return () => clearTimeout(timer)
+    initializeAuth()
   }, [])
 
-  const validateToken = async (token: string): Promise<boolean> => {
-    try {
-      // Aqui você faria uma chamada para validar o token
-      // Por enquanto, retornando true para manter funcionando
-      return true
-    } catch (error) {
-      console.error("Erro ao validar token:", error)
-      return false
-    }
-  }
-
-  const login1 = async (email: string, password: string): Promise<boolean> => {
-    try {
-      setLoading(true)
-      console.log("[v0] Fazendo chamada para API de login")
-
-      // const response = await fetch("https://multatendiment-aquecimento.ybrsom.easypanel.host/auth/login", {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify({ email, password }),
-      // })
- const Response = await apiInstances.post(
-      "/auth/login",
-      { email, password },
-      { withCredentials: true } // ✅ tenta via cookie HttpOnly
-    )
-      const data = await Response.data
-
-      if (data.success && data.user) {
-        console.log("[v0] Login bem-sucedido via API:", data.user)
-        setUser(data.user)
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem("user", JSON.stringify(data.user))
-          if (data.user.token) {
-            localStorage.setItem("token", data.user.token)
-          }
-          document.cookie = `user=${JSON.stringify(data.user)}; path=/; max-age=86400`
-          console.log("[v0] Dados salvos no localStorage e cookie")
-        }
-        return true
-      }
-
-      console.log("[v0] Falha no login:", data.message)
-      return false
-    } catch (error) {
-      console.error("[v0] Erro na chamada da API de login:", error)
-      return false
-    } finally {
-      setLoading(false)
-    }
-  }
 const login = async (email: string, password: string): Promise<boolean> => {
   try {
     setLoading(true)
@@ -286,39 +214,24 @@ const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(false)
   }
 }
+
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
     try {
       setLoading(true)
-      console.log("[v0] Fazendo chamada para API de registro")
+      const res = await apiInstances.post("/auth/register", { email, password, name })
 
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password, name }),
-      })
-
-      const data = await response.json()
-
-      if (data.success && data.user) {
-        console.log("[v0] Registro bem-sucedido via API:", data.user)
-        setUser(data.user)
+      if (res.data?.user && res.data?.token) {
+        setUser({ ...res.data.user, token: res.data.token })
 
         if (typeof window !== "undefined") {
-          localStorage.setItem("user", JSON.stringify(data.user))
-          if (data.user.token) {
-            localStorage.setItem("token", data.user.token)
-          }
-          document.cookie = `user=${JSON.stringify(data.user)}; path=/; max-age=86400`
+          localStorage.setItem("user", JSON.stringify(res.data.user))
+          localStorage.setItem("token", res.data.token)
         }
         return true
       }
-
-      console.log("[v0] Falha no registro:", data.message)
       return false
     } catch (error) {
-      console.error("[v0] Erro na chamada da API de registro:", error)
+      console.error("[Auth] Erro ao registrar:", error)
       return false
     } finally {
       setLoading(false)
@@ -326,11 +239,10 @@ const login = async (email: string, password: string): Promise<boolean> => {
   }
 
   const logout = () => {
-    console.log("[v0] Fazendo logout")
     setUser(null)
     if (typeof window !== "undefined") {
       localStorage.removeItem("user")
-      localStorage.removeItem("token") // Remover token também
+      localStorage.removeItem("token")
       document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
     }
     router.replace("/auth/login")
@@ -338,7 +250,8 @@ const login = async (email: string, password: string): Promise<boolean> => {
 
   return (
     <AuthContext.Provider value={{ user, login, register, logout, loading, isHydrated }}>
-      {children}
+      {/* 👇 só renderiza children depois da hidratação */}
+      {isHydrated ? children : null}
     </AuthContext.Provider>
   )
 }
