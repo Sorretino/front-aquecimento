@@ -11,7 +11,7 @@ import { AuthProvider } from "@/lib/auth-context"
 import { SidebarProvider } from "@/components/sidebar-provider"
 import { Sidebar } from "@/components/sidebar"
 import { LayoutContent } from "@/components/layout-content"
-import "../../app/globals.css"
+import "../../../app/globals.css"
 import { Toaster } from "react-hot-toast"
 import { DashboardHeader } from "@/components/dashboard-header"
 
