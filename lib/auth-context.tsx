@@ -198,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login1 = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true)
       console.log("[v0] Fazendo chamada para API de login")
@@ -241,7 +241,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     }
   }
+const login = async (email: string, password: string): Promise<boolean> => {
+  try {
+    setLoading(true)
+    console.log("[v0] Fazendo chamada para API de login")
 
+    const response = await apiInstances.post(
+      "/auth/login",
+      { email, password },
+      { withCredentials: true } // mantém cookies, se estiver usando
+    )
+
+    const data = response.data
+    console.log("[v0] Login response", data)
+
+    // Aceita sucesso quando recebemos user ou token (backend retorna { token, user })
+    if (data && (data.user || data.token)) {
+      const userData = data.user
+
+      // atualiza estado
+      setUser(userData)
+
+      if (typeof window !== "undefined") {
+        // salva fallback em localStorage (útil em dev e para o front)
+        localStorage.setItem("user", JSON.stringify(userData))
+        if (data.token) {
+          localStorage.setItem("token", data.token)
+        }
+
+        // cookie legível por JS (apenas informativo; se você usa HttpOnly do backend,
+        // o token real fica no cookie HttpOnly e não precisa disso)
+        document.cookie = `user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=86400`
+      }
+
+      return true
+    }
+
+    console.log("[v0] Falha no login:", data?.message ?? "Resposta inválida")
+    return false
+  } catch (error) {
+    console.error("[v0] Erro na chamada da API de login:", error)
+    return false
+  } finally {
+    setLoading(false)
+  }
+}
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
     try {
       setLoading(true)

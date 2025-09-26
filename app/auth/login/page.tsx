@@ -22,7 +22,7 @@ export default function LoginPage() {
   const { login } = useAuth()
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit1 = async (e: React.FormEvent) => {
   e.preventDefault()
   setError("")
   setIsLoading(true)
@@ -52,7 +52,7 @@ export default function LoginPage() {
   }
 }
 
-  const handleSubmit1 = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
